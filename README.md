@@ -2,47 +2,72 @@
 
 [Smart Robot Car Kit V4.0 (With Camera)](https://us.elegoo.com/products/elegoo-smart-robot-car-kit-v-4-0)
 
-This repository contains an open-source classroom adaptation of the ELEGOO Smart Robot Car V4.0 firmware + web control stack.
+This repository is a classroom-focused control stack for the ELEGOO Smart Robot Car V4.0.
+It combines curated firmware copies with a browser FPV dashboard and a local bridge service.
 
-Primary goals:
-- Browser-based FPV driving
-- Mode-based experiments (manual, line follow, obstacle, follow)
-- Live telemetry and challenge-based STEM activities
+## Start Here
 
-## Project Components
+- For classroom bring-up: `docs/QUICKSTART.md`
+- For protocol/system behavior: `docs/SYSTEM_PROTOCOL.md`
+- For project context: `docs/PROJECT_OVERVIEW.md`
+- For UI usage details: `wifi-control-ui/README.md`
+- For firmware layout and compile notes: `arduino-code/README.md`
 
-- `arduino-code/`
-  - Curated firmware workspace for this project
-  - UNO firmware + ESP32 camera firmware copies used by the current setup
+## What This Project Adds
+
+- Browser-based FPV driving (joystick, D-pad, keyboard)
+- Explicit mode workflow (`FPV / Manual`, `Line Follow`, `Obstacle`, `Follow`)
+- Live telemetry + challenge cards for activities
+- Session recording (CSV) + image snapshots
+- Bridge process that adapts browser WebSocket traffic to car TCP protocol
+
+## Runtime Topology
+
+1. Browser UI <-> WebSocket bridge (`ws://<host>:8787`)
+2. Bridge <-> ESP32 socket (`192.168.4.1:100`)
+3. ESP32 <-> UNO over UART
+4. Camera stream (`http://192.168.4.1:81/stream`)
+
+## Repository Layout
+
 - `wifi-control-ui/`
   - React/Vite dashboard
-  - Node bridge (`server/bridge.mjs`) for WebSocket <-> car TCP
+  - Bridge server at `wifi-control-ui/server/bridge.mjs`
+- `arduino-code/`
+  - Curated UNO and ESP32 firmware used by this project
 - `docs/`
-  - Setup, troubleshooting, protocol, and licensing documentation
+  - Quickstart, protocol, overview, troubleshooting, and licensing docs
 
-## Key Documentation
+## Quick Dev Run (UI + Bridge)
 
-- System/protocol reference: `docs/SYSTEM_PROTOCOL.md`
-- Licensing notice: `docs/LICENSING.md`
-- Arduino code workspace notes: `arduino-code/README.md`
-- Arduino workspace agent instructions: `arduino-code/AGENTS.md`
-
-## Quick Start (Web UI)
+Terminal A:
 
 ```bash
 cd wifi-control-ui
 npm install
 npm run bridge
-# in a second terminal
+```
+
+Terminal B:
+
+```bash
 cd wifi-control-ui
 npm run dev -- --host
 ```
 
-Then open:
-- `http://localhost:5173`
+Open the Vite URL (typically `http://localhost:5173`), then use:
+- Bridge Host:Port = `localhost:8787`
+- Car Host = `192.168.4.1`
+- Car TCP Port = `100`
+
+## Notes
+
+- `N22` polling is intentionally disabled in auto modes to avoid UNO mode disruption.
+- ESP32 heartbeat frame (`{Heartbeat}`) must be echoed by the bridge.
+- Obstacle threshold in current stock UNO firmware is 20 cm.
 
 ## License
 
-This project is intended to follow the same licensing terms as the upstream ELEGOO firmware/materials it is derived from, with third-party components retaining their own licenses.
+This project follows upstream ELEGOO licensing intent for derived firmware/materials, while preserving third-party component licenses.
 
 See `docs/LICENSING.md` for details.
