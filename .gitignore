@@ -20,6 +20,7 @@ yarn-error.log*
 # Editor
 .vscode/
 .idea/
+.nvimlog
 
 # Python cache (if any helper scripts are added)
 __pycache__/
