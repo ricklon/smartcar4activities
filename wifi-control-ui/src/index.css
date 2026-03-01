@@ -1,0 +1,221 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --app-from: 15 23 42;
+  --app-mid: 2 6 23;
+  --app-to: 0 0 0;
+  --panel-bg: 15 23 42;
+  --panel-soft: 30 41 59;
+  --panel-border: 51 65 85;
+  --accent: 14 165 233;
+  --ok: 34 197 94;
+  --warn: 245 158 11;
+  --bad: 239 68 68;
+  --ink: 241 245 249;
+  --input-bg: 15 23 42;
+  --input-border: 51 65 85;
+  --input-ink: 226 232 240;
+}
+
+[data-theme='bigtrak'] {
+  --app-from: 94 74 58;
+  --app-mid: 73 57 44;
+  --app-to: 34 27 21;
+  --panel-bg: 88 69 54;
+  --panel-soft: 120 94 73;
+  --panel-border: 28 21 16;
+  --accent: 0 144 28;
+  --ok: 0 144 28;
+  --warn: 239 234 20;
+  --bad: 255 103 0;
+  --ink: 248 245 240;
+  --input-bg: 70 55 44;
+  --input-border: 28 21 16;
+  --input-ink: 248 245 240;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+  color: rgb(var(--ink));
+}
+
+.panel {
+  @apply rounded-xl p-4 shadow-lg;
+  border: 1px solid rgb(var(--panel-border));
+  background: rgb(var(--panel-bg));
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+}
+
+.panel input,
+.panel select {
+  border-color: rgb(var(--input-border)) !important;
+  background: rgb(var(--input-bg)) !important;
+  color: rgb(var(--input-ink)) !important;
+}
+
+.bt-input {
+  @apply rounded border px-3 py-2;
+  border-color: rgb(var(--input-border));
+  background: rgb(var(--input-bg));
+  color: rgb(var(--input-ink));
+}
+
+.bt-action,
+.bt-dpad,
+.bt-mode,
+.bt-kp {
+  @apply rounded border px-3 py-2 text-sm font-medium transition;
+}
+
+.bt-dpad {
+  @apply p-2 text-lg;
+}
+
+.bt-mode {
+  @apply p-2 text-sm;
+}
+
+.bt-chip {
+  @apply rounded px-2 py-1 text-xs;
+}
+
+.bt-chip-record {
+  @apply rounded px-2 py-1 text-xs;
+}
+
+.bt-badge {
+  @apply inline-block rounded px-2 py-1 font-semibold;
+}
+
+.bt-action,
+.bt-dpad,
+.bt-kp {
+  border-color: rgb(var(--input-border));
+  background: rgb(var(--panel-soft));
+  color: rgb(var(--ink));
+}
+
+.bt-mode {
+  border-color: rgb(var(--input-border));
+  background: rgb(var(--input-bg));
+  color: rgb(var(--ink));
+}
+
+[data-theme='bigtrak'] .panel {
+  border-width: 3px;
+  border-radius: 16px;
+}
+
+[data-theme='bigtrak'] .bt-action,
+[data-theme='bigtrak'] .bt-dpad,
+[data-theme='bigtrak'] .bt-mode,
+[data-theme='bigtrak'] .bt-kp {
+  border: 3px solid #111;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 3px #f2f2f2, 0 2px 0 #111;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+[data-theme='bigtrak'] .bt-action {
+  background: #1f9bd1;
+  color: #f6f6f6;
+}
+
+[data-theme='bigtrak'] .bt-action.bt-action-go {
+  background: #008f1c;
+  color: #f6f6f6;
+}
+
+[data-theme='bigtrak'] .bt-action.bt-action-warn {
+  background: #ff6700;
+  color: #fff7ef;
+}
+
+[data-theme='bigtrak'] .bt-action.bt-action-kp {
+  background: #eceb10;
+  color: #2a1d11;
+}
+
+[data-theme='bigtrak'] .bt-dpad {
+  background: #008f1c;
+  color: #f6f6f6;
+  min-width: 44px;
+}
+
+[data-theme='bigtrak'] .bt-dpad.bt-stop {
+  background: #ff6700;
+  color: #fff7ef;
+}
+
+[data-theme='bigtrak'] .bt-mode {
+  background: #eceb10;
+  color: #2a1d11;
+}
+
+[data-theme='bigtrak'] .bt-mode.bt-mode-active {
+  background: #ff6700;
+  color: #fff7ef;
+}
+
+[data-theme='bigtrak'] .bt-kp {
+  background: #eceb10;
+  color: #2a1d11;
+}
+
+[data-theme='bigtrak'] .bt-input {
+  border: 3px solid #111;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 3px #f2f2f2;
+  background: #eceb10;
+  color: #2a1d11;
+  font-weight: 700;
+}
+
+[data-theme='bigtrak'] .bt-chip {
+  border: 3px solid #111;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 2px #f2f2f2;
+}
+
+[data-theme='bigtrak'] .bt-chip.bt-chip-on {
+  background: #008f1c !important;
+  color: #f7f7f7 !important;
+}
+
+[data-theme='bigtrak'] .bt-chip.bt-chip-off {
+  background: #1f9bd1 !important;
+  color: #f7f7f7 !important;
+}
+
+[data-theme='bigtrak'] .bt-chip-record {
+  border: 3px solid #111;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 2px #f2f2f2;
+  background: #ff6700 !important;
+  color: #fff7ef !important;
+}
+
+[data-theme='bigtrak'] .bt-badge.bt-pass {
+  border: 3px solid #111;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 2px #f2f2f2;
+  background: #008f1c !important;
+  color: #f7f7f7 !important;
+}
+
+[data-theme='bigtrak'] .bt-badge.bt-progress {
+  border: 3px solid #111;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 2px #f2f2f2;
+  background: #1f9bd1 !important;
+  color: #f7f7f7 !important;
+}
