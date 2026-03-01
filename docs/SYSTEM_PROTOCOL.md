@@ -148,12 +148,20 @@ Mitigation in `bridge.mjs`:
 - Firmware obstacle threshold constant is `ObstacleDetection = 20` cm.
 - Obstacle and follow logic currently use 20 cm checks in stock firmware.
 
+### Follow mode behavior (stock firmware)
+
+- Entered via `N=101, D1=3`.
+- Follow mode uses ultrasonic distance + servo scan waypoints to choose move/turn behavior.
+- If target is not within the stock near-range check (~20 cm), the car stops and continues scanning.
+- If ground-status safety indicates the car is not on ground, motion is stopped.
+- Current UI follow threshold fields are teaching/analysis aids; they do not retune the stock follow algorithm.
+
 ## 10. Bring-up Checklist
 
 1. Power car and ensure ESP32 AP is visible.
 2. Connect laptop/phone to car AP.
-3. Start bridge: `npm run bridge`.
-4. Start UI: `npm run dev -- --host`.
+3. Start control stack: `npm run car` (in `wifi-control-ui/`).
+4. (Optional fallback) Start bridge and UI separately with `npm run bridge` and `npm run dev -- --host`.
 5. In UI click `Connect Bridge + Car`.
 6. Verify:
    - Bridge online

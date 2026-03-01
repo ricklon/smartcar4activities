@@ -109,6 +109,12 @@ Open UI:
 - `Obstacle`: sends obstacle-avoidance mode command
 - `Follow`: sends follow mode command
 
+Follow mode notes (stock firmware behavior):
+- Activated by `N101 D1=3` through the same protocol used by the default control stack.
+- Uses ultrasonic + servo scan logic in firmware and a stock near-range check (~20 cm).
+- If no valid near target is detected, it stops and scans.
+- UI "follow threshold" controls in mode lab are analysis/teaching aids and do not change firmware logic.
+
 ## Sensor Explorer
 
 Grouped panels:
