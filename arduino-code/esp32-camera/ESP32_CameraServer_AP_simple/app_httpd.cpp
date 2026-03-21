@@ -2,8 +2,10 @@
 #include "esp_timer.h"
 #include "esp_camera.h"
 #include "img_converters.h"
+#include "CameraWebServer_AP.h"
 #include "camera_index.h"
 #include "Arduino.h"
+#include <ctype.h>
 
 #define PART_BOUNDARY "123456789000000000000987654321"
 static const char *_STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
@@ -14,6 +16,170 @@ static const char *_STREAM_PART_test = "Content-Type: image/jpeg\r\nContent-Leng
 
 httpd_handle_t stream_httpd = NULL;
 httpd_handle_t camera_httpd = NULL;
+
+static int from_hex(char c)
+{
+  if (c >= '0' && c <= '9')
+  {
+    return c - '0';
+  }
+  c = tolower(c);
+  if (c >= 'a' && c <= 'f')
+  {
+    return 10 + (c - 'a');
+  }
+  return -1;
+}
+
+static String url_decode(const String &input)
+{
+  String decoded;
+  decoded.reserve(input.length());
+  for (size_t i = 0; i < input.length(); ++i)
+  {
+    char c = input.charAt(i);
+    if (c == '+')
+    {
+      decoded += ' ';
+    }
+    else if (c == '%' && i + 2 < input.length())
+    {
+      int hi = from_hex(input.charAt(i + 1));
+      int lo = from_hex(input.charAt(i + 2));
+      if (hi >= 0 && lo >= 0)
+      {
+        decoded += char((hi << 4) | lo);
+        i += 2;
+      }
+      else
+      {
+        decoded += c;
+      }
+    }
+    else
+    {
+      decoded += c;
+    }
+  }
+  return decoded;
+}
+
+static String form_value(const String &body, const String &key)
+{
+  String prefix = key + "=";
+  int start = body.indexOf(prefix);
+  if (start < 0)
+  {
+    return "";
+  }
+  start += prefix.length();
+  int end = body.indexOf('&', start);
+  if (end < 0)
+  {
+    end = body.length();
+  }
+  return url_decode(body.substring(start, end));
+}
+
+static esp_err_t wifi_page_handler(httpd_req_t *req)
+{
+  String html;
+  html.reserve(2200);
+  html += "<!doctype html><html><head><meta charset='utf-8'><title>Wi-Fi Setup</title>";
+  html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+  html += "<style>body{font-family:sans-serif;max-width:720px;margin:2rem auto;padding:0 1rem;}form{display:grid;gap:.75rem;margin:1rem 0;}input{padding:.65rem;font-size:1rem;}button{padding:.7rem 1rem;font-size:1rem;}code{background:#eee;padding:.1rem .3rem;} .card{border:1px solid #ddd;border-radius:10px;padding:1rem;margin:1rem 0;}</style></head><body>";
+  html += "<h1>ESP32 Wi-Fi Setup</h1>";
+  html += "<div class='card'><p><strong>Mode:</strong> " + CameraWebServerAP.GetModeLabel() + "</p>";
+  html += "<p><strong>AP SSID:</strong> " + CameraWebServerAP.GetActiveAccessPointSSID() + "</p>";
+  html += "<p><strong>AP IP:</strong> " + CameraWebServerAP.GetAccessPointIP() + "</p>";
+  html += "<p><strong>Saved STA SSID:</strong> " + CameraWebServerAP.GetSavedStationSSID() + "</p>";
+  html += "<p><strong>STA Connected:</strong> " + String(CameraWebServerAP.IsStationConnected() ? "yes" : "no") + "</p>";
+  html += "<p><strong>STA IP:</strong> " + CameraWebServerAP.GetStationIP() + "</p></div>";
+  html += "<div class='card'><h2>Join Local Wi-Fi</h2><form method='POST' action='/wifi/config'>";
+  html += "<input name='ssid' placeholder='Wi-Fi SSID' maxlength='32' required>";
+  html += "<input name='password' placeholder='Wi-Fi Password' maxlength='63' type='password'>";
+  html += "<button type='submit'>Save And Reboot</button></form>";
+  html += "<p>This stores credentials in NVS, reboots, tries STA first, and falls back to AP if join fails.</p></div>";
+  html += "<div class='card'><h2>Forget Saved Wi-Fi</h2><form method='POST' action='/wifi/forget'>";
+  html += "<button type='submit'>Forget And Reboot To AP</button></form></div>";
+  html += "<p>JSON status is available at <code>/wifi/status</code>.</p></body></html>";
+
+  httpd_resp_set_type(req, "text/html");
+  return httpd_resp_send(req, html.c_str(), html.length());
+}
+
+static esp_err_t wifi_status_handler(httpd_req_t *req)
+{
+  String json = "{";
+  json += "\"mode\":\"" + CameraWebServerAP.GetModeLabel() + "\",";
+  json += "\"ap_ssid\":\"" + CameraWebServerAP.GetActiveAccessPointSSID() + "\",";
+  json += "\"ap_ip\":\"" + CameraWebServerAP.GetAccessPointIP() + "\",";
+  json += "\"saved_sta_ssid\":\"" + CameraWebServerAP.GetSavedStationSSID() + "\",";
+  json += "\"sta_connected\":";
+  json += CameraWebServerAP.IsStationConnected() ? "true" : "false";
+  json += ",\"sta_ip\":\"" + CameraWebServerAP.GetStationIP() + "\"}";
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  return httpd_resp_send(req, json.c_str(), json.length());
+}
+
+static esp_err_t wifi_config_handler(httpd_req_t *req)
+{
+  int total = req->content_len;
+  if (total <= 0 || total > 256)
+  {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "invalid request body");
+    return ESP_FAIL;
+  }
+
+  char body[257];
+  int received = httpd_req_recv(req, body, total);
+  if (received <= 0)
+  {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "failed to read request body");
+    return ESP_FAIL;
+  }
+  body[received] = '\0';
+
+  String form = String(body);
+  String station_ssid = form_value(form, "ssid");
+  String station_password = form_value(form, "password");
+
+  if (station_ssid.length() == 0)
+  {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "ssid is required");
+    return ESP_FAIL;
+  }
+
+  if (!CameraWebServerAP.SaveStationCredentials(station_ssid, station_password))
+  {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "failed to save credentials");
+    return ESP_FAIL;
+  }
+
+  String html;
+  html += "<!doctype html><html><body><h1>Wi-Fi Saved</h1>";
+  html += "<p>Saved SSID <strong>" + station_ssid + "</strong>.</p>";
+  html += "<p>Rebooting now. After reboot, the device will try your local network first and fall back to its own AP if it cannot connect.</p>";
+  html += "</body></html>";
+  httpd_resp_set_type(req, "text/html");
+  httpd_resp_send(req, html.c_str(), html.length());
+  delay(500);
+  ESP.restart();
+  return ESP_OK;
+}
+
+static esp_err_t wifi_forget_handler(httpd_req_t *req)
+{
+  CameraWebServerAP.ClearStationCredentials();
+  String html = "<!doctype html><html><body><h1>Wi-Fi Cleared</h1><p>Saved local network credentials were removed. Rebooting to AP mode.</p></body></html>";
+  httpd_resp_set_type(req, "text/html");
+  httpd_resp_send(req, html.c_str(), html.length());
+  delay(500);
+  ESP.restart();
+  return ESP_OK;
+}
 
 static size_t jpg_encode_stream(void *arg, size_t index, const void *data, size_t len)
 {
@@ -336,6 +502,30 @@ void startCameraServer()
       .handler = status_handler,
       .user_ctx = NULL};
 
+  httpd_uri_t wifi_page_uri = {
+      .uri = "/wifi",
+      .method = HTTP_GET,
+      .handler = wifi_page_handler,
+      .user_ctx = NULL};
+
+  httpd_uri_t wifi_status_uri = {
+      .uri = "/wifi/status",
+      .method = HTTP_GET,
+      .handler = wifi_status_handler,
+      .user_ctx = NULL};
+
+  httpd_uri_t wifi_config_uri = {
+      .uri = "/wifi/config",
+      .method = HTTP_POST,
+      .handler = wifi_config_handler,
+      .user_ctx = NULL};
+
+  httpd_uri_t wifi_forget_uri = {
+      .uri = "/wifi/forget",
+      .method = HTTP_POST,
+      .handler = wifi_forget_handler,
+      .user_ctx = NULL};
+
   httpd_uri_t cmd_uri = {
       .uri = "/control",
       .method = HTTP_GET,
@@ -360,6 +550,10 @@ void startCameraServer()
     httpd_register_uri_handler(camera_httpd, &index_uri);
     httpd_register_uri_handler(camera_httpd, &cmd_uri);
     httpd_register_uri_handler(camera_httpd, &status_uri);
+    httpd_register_uri_handler(camera_httpd, &wifi_page_uri);
+    httpd_register_uri_handler(camera_httpd, &wifi_status_uri);
+    httpd_register_uri_handler(camera_httpd, &wifi_config_uri);
+    httpd_register_uri_handler(camera_httpd, &wifi_forget_uri);
     httpd_register_uri_handler(camera_httpd, &capture_uri);
   }
   config.server_port += 1;

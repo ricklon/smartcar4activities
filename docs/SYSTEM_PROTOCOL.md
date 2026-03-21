@@ -65,6 +65,28 @@ It is based on the current code in:
 
 The bridge is the protocol adapter. The browser never talks directly to the car.
 
+## 2a. Wi-Fi Network Modes
+
+The ESP32 camera firmware now supports two boot paths:
+
+- Station mode (`STA`) when saved local Wi-Fi credentials exist and the join succeeds
+- Fallback access point mode (`AP`) when there are no saved credentials or the station join times out
+
+Provisioning flow:
+
+1. Fresh device boots into its own AP
+2. User connects to the AP and opens `/wifi`
+3. User saves local Wi-Fi credentials
+4. Device reboots
+5. Device tries local Wi-Fi first
+6. If the join fails, it falls back to its own AP again
+
+Runtime fallback:
+
+- if saved credentials exist
+- and STA remains disconnected for an extended retry window
+- the firmware re-enables the fallback AP so the device remains recoverable
+
 ## 3. Frame Types by Layer
 
 ### Browser <-> bridge
@@ -116,6 +138,19 @@ Bridge -> browser messages:
 ```json
 {"type":"error","message":"socket error text"}
 ```
+
+### Browser -> ESP32 camera admin
+
+The camera web server also exposes local configuration endpoints:
+
+- `GET /wifi`
+  - simple HTML setup page for Wi-Fi provisioning
+- `GET /wifi/status`
+  - JSON network status
+- `POST /wifi/config`
+  - stores local Wi-Fi credentials in NVS and reboots
+- `POST /wifi/forget`
+  - clears stored local Wi-Fi credentials and reboots to AP mode
 
 ### Bridge <-> ESP32
 
@@ -223,6 +258,23 @@ Bridge behavior:
 UNO behavior:
 
 - does not participate in heartbeat directly
+
+## 5a. Wi-Fi Credential Persistence
+
+The ESP32 stores local Wi-Fi credentials in NVS using the Arduino-ESP32 `Preferences` library.
+
+Stored values:
+
+- namespace: `wifi`
+- keys:
+  - `ssid`
+  - `password`
+
+Operational rules:
+
+- the firmware does not depend on the WiFi library's own flash persistence
+- credentials are managed explicitly through the provisioning endpoints
+- clearing saved credentials returns the device to AP-first behavior on next boot
 
 ## 6. Browser Command Semantics
 

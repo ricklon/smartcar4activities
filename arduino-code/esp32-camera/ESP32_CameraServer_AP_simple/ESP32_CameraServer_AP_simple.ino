@@ -122,5 +122,6 @@ void setup()
 
 void loop()
 {
+  CameraWebServerAP.CameraWebServer_AP_Loop();
   SocketServer_Test();
 }

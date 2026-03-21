@@ -6,6 +6,15 @@
 
 void startCameraServer();
 
+namespace
+{
+const char *kWifiPrefsNamespace = "wifi";
+const char *kWifiSsidKey = "ssid";
+const char *kWifiPasswordKey = "password";
+const uint32_t kInitialStaConnectTimeoutMs = 15000;
+const uint32_t kFallbackRetryWindowMs = 20000;
+}
+
 void CameraWebServer_AP::CameraWebServer_AP_Init(void)
 {
   camera_config_t config;
@@ -62,27 +71,260 @@ void CameraWebServer_AP::CameraWebServer_AP_Init(void)
 
   Serial.println("\r\n");
 
+  access_point_ssid = BuildDefaultAccessPointSSID();
+  wifi_name = access_point_ssid.substring(strlen(ssid));
+  WiFi.setTxPower(WIFI_POWER_19_5dBm);
+  WiFi.persistent(false);
+  if (!ConnectSavedStation(kInitialStaConnectTimeoutMs))
+  {
+    StartAccessPoint();
+  }
+  startCameraServer();
+
+  if (IsStationConnected())
+  {
+    Serial.print("Camera Ready on STA! Use 'http://");
+    Serial.print(WiFi.localIP());
+    Serial.println("' to connect");
+  }
+  if (IsAccessPointActive())
+  {
+    Serial.print("Camera Ready on AP! Use 'http://");
+    Serial.print(WiFi.softAPIP());
+    Serial.println("' to connect");
+  }
+}
+
+void CameraWebServer_AP::CameraWebServer_AP_Loop(void)
+{
+  if (!HasSavedStationCredentials())
+  {
+    return;
+  }
+
+  if (IsStationConnected())
+  {
+    sta_retry_started_at = 0;
+    return;
+  }
+
+  wifi_mode_t mode = WiFi.getMode();
+  if (mode == WIFI_AP || mode == WIFI_AP_STA)
+  {
+    return;
+  }
+
+  if (sta_retry_started_at == 0)
+  {
+    sta_retry_started_at = millis();
+    WiFi.reconnect();
+    return;
+  }
+
+  if (millis() - sta_retry_started_at > kFallbackRetryWindowMs)
+  {
+    Serial.println("STA reconnect timed out, enabling fallback AP");
+    StartAccessPoint();
+    sta_retry_started_at = 0;
+  }
+}
+
+bool CameraWebServer_AP::SaveStationCredentials(const String &station_ssid, const String &station_password)
+{
+  Preferences prefs;
+  if (!prefs.begin(kWifiPrefsNamespace, false))
+  {
+    return false;
+  }
+
+  bool ok = prefs.putString(kWifiSsidKey, station_ssid) > 0;
+  ok = ok && prefs.putString(kWifiPasswordKey, station_password) >= 0;
+  prefs.end();
+  return ok;
+}
+
+bool CameraWebServer_AP::ClearStationCredentials(void)
+{
+  Preferences prefs;
+  if (!prefs.begin(kWifiPrefsNamespace, false))
+  {
+    return false;
+  }
+
+  bool ok = prefs.remove(kWifiSsidKey);
+  ok = prefs.remove(kWifiPasswordKey) || ok;
+  prefs.end();
+  return ok;
+}
+
+bool CameraWebServer_AP::HasSavedStationCredentials(void)
+{
+  Preferences prefs;
+  if (!prefs.begin(kWifiPrefsNamespace, true))
+  {
+    return false;
+  }
+
+  bool has_credentials = prefs.isKey(kWifiSsidKey);
+  prefs.end();
+  return has_credentials;
+}
+
+bool CameraWebServer_AP::IsStationConnected(void)
+{
+  return WiFi.status() == WL_CONNECTED;
+}
+
+bool CameraWebServer_AP::IsAccessPointActive(void)
+{
+  wifi_mode_t mode = WiFi.getMode();
+  return mode == WIFI_AP || mode == WIFI_AP_STA;
+}
+
+String CameraWebServer_AP::GetSavedStationSSID(void)
+{
+  String station_ssid;
+  String station_password;
+  LoadStationCredentials(&station_ssid, &station_password);
+  return station_ssid;
+}
+
+String CameraWebServer_AP::GetActiveAccessPointSSID(void)
+{
+  return access_point_ssid;
+}
+
+String CameraWebServer_AP::GetStationIP(void)
+{
+  return IsStationConnected() ? WiFi.localIP().toString() : String();
+}
+
+String CameraWebServer_AP::GetAccessPointIP(void)
+{
+  return IsAccessPointActive() ? WiFi.softAPIP().toString() : String();
+}
+
+String CameraWebServer_AP::GetModeLabel(void)
+{
+  wifi_mode_t mode = WiFi.getMode();
+  if (mode == WIFI_AP_STA)
+  {
+    return "AP+STA";
+  }
+  if (mode == WIFI_STA)
+  {
+    return "STA";
+  }
+  if (mode == WIFI_AP)
+  {
+    return "AP";
+  }
+  return "OFF";
+}
+
+bool CameraWebServer_AP::ConnectSavedStation(uint32_t timeout_ms)
+{
+  String station_ssid;
+  String station_password;
+  LoadStationCredentials(&station_ssid, &station_password);
+  if (station_ssid.length() == 0)
+  {
+    return false;
+  }
+
+  Serial.print("Trying saved STA network: ");
+  Serial.println(station_ssid);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(station_ssid.c_str(), station_password.c_str());
+
+  unsigned long started_at = millis();
+  while (millis() - started_at < timeout_ms)
+  {
+    if (WiFi.status() == WL_CONNECTED)
+    {
+      Serial.print("STA connected with IP: ");
+      Serial.println(WiFi.localIP());
+      sta_retry_started_at = 0;
+      return true;
+    }
+    delay(250);
+  }
+
+  Serial.println("Saved STA network connect timed out");
+  WiFi.disconnect(false, false);
+  return false;
+}
+
+void CameraWebServer_AP::BeginStationConnection(void)
+{
+  String station_ssid;
+  String station_password;
+  LoadStationCredentials(&station_ssid, &station_password);
+  if (station_ssid.length() == 0)
+  {
+    return;
+  }
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(station_ssid.c_str(), station_password.c_str());
+  sta_retry_started_at = millis();
+}
+
+void CameraWebServer_AP::StartAccessPoint(void)
+{
+  if (access_point_ssid.length() == 0)
+  {
+    access_point_ssid = BuildDefaultAccessPointSSID();
+  }
+
+  Serial.println(":----------------------------:");
+  Serial.print("wifi_name:");
+  Serial.println(access_point_ssid);
+  Serial.println(":----------------------------:");
+
+  wifi_mode_t mode = WiFi.getMode();
+  if (mode == WIFI_STA && HasSavedStationCredentials())
+  {
+    WiFi.mode(WIFI_AP_STA);
+  }
+  else
+  {
+    WiFi.mode(WIFI_AP);
+  }
+  WiFi.softAP(access_point_ssid.c_str(), password, 9);
+}
+
+void CameraWebServer_AP::StopAccessPoint(void)
+{
+  WiFi.softAPdisconnect(true);
+  if (IsStationConnected())
+  {
+    WiFi.mode(WIFI_STA);
+  }
+}
+
+String CameraWebServer_AP::BuildDefaultAccessPointSSID(void)
+{
   uint64_t chipid = ESP.getEfuseMac();
   char string[10];
   sprintf(string, "%04X", (uint16_t)(chipid >> 32));
   String mac0_default = String(string);
   sprintf(string, "%08X", (uint32_t)chipid);
   String mac1_default = String(string);
-  String url = ssid + mac0_default + mac1_default;
-  const char *mac_default = url.c_str();
+  return String(ssid) + mac0_default + mac1_default;
+}
 
-  Serial.println(":----------------------------:");
-  Serial.print("wifi_name:");
-  Serial.println(mac_default);
-  Serial.println(":----------------------------:");
-  wifi_name = mac0_default + mac1_default;
+void CameraWebServer_AP::LoadStationCredentials(String *station_ssid, String *station_password)
+{
+  Preferences prefs;
+  if (!prefs.begin(kWifiPrefsNamespace, true))
+  {
+    *station_ssid = "";
+    *station_password = "";
+    return;
+  }
 
-  WiFi.setTxPower(WIFI_POWER_19_5dBm);
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP(mac_default, password, 9);
-  startCameraServer();
-
-  Serial.print("Camera Ready! Use 'http://");
-  Serial.print(WiFi.softAPIP());
-  Serial.println("' to connect");
+  *station_ssid = prefs.getString(kWifiSsidKey, "");
+  *station_password = prefs.getString(kWifiPasswordKey, "");
+  prefs.end();
 }
