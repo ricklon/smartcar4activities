@@ -16,10 +16,47 @@ npm -v
 
 ## 1. Power + Network
 
+Choose the network mode that matches the current ESP32 state.
+
+### Option A. Car fallback AP mode
+
+Use this when:
+
+- the ESP32 has no saved Wi-Fi credentials
+- or it failed to join the saved local network and fell back to its own AP
+
+Compatibility note:
+
+- Fallback AP mode intentionally keeps the original ELEGOO network layout.
+- That means the same stock-style car endpoints are preserved in fallback mode even though the project also supports LAN mode.
+
+Steps:
+
 1. Power on the car.
 2. Join the car Wi-Fi AP (`ELEGOO-...`) from laptop/phone.
-3. Confirm the camera stream opens:
-   - `http://192.168.4.1:81/stream`
+3. Use these car endpoints:
+   - camera stream: `http://192.168.4.1:81/stream`
+   - car host: `192.168.4.1`
+   - car TCP port: `100`
+
+### Option B. Local network mode
+
+Use this when:
+
+- the ESP32 successfully joined your saved LAN/Wi-Fi
+
+Steps:
+
+1. Power on the car.
+2. Join the same LAN/Wi-Fi from laptop/phone.
+3. Find the car's LAN IP from:
+   - the router DHCP/client list
+   - the ESP32 serial boot log
+   - `/wifi/status` before leaving AP mode
+4. Use these car endpoints:
+   - camera stream: `http://<car-lan-ip>:81/stream`
+   - car host: `<car-lan-ip>`
+   - car TCP port: `100`
 
 ## 2. Start Control Stack
 
@@ -51,7 +88,9 @@ Open the UI using the local/LAN URL printed by Vite.
 
 Set:
 - Bridge Host:Port = `localhost:8787` (or laptop IP for phone clients)
-- Car Host = `192.168.4.1`
+- Car Host =:
+  - `192.168.4.1` in fallback AP mode
+  - `<car-lan-ip>` in local network mode
 - Car TCP Port = `100`
 
 Click `Connect Bridge + Car`.
@@ -87,5 +126,7 @@ Expected:
 ## Troubleshooting
 
 - If `Car TCP` drops: restart bridge and reconnect.
+- If the ESP32 falls back to AP mode: join `ELEGOO-...` and set Car Host back to `192.168.4.1`.
+- If the ESP32 is on your LAN: keep Bridge Host at `localhost:8787`, but set Car Host to the ESP32 LAN IP.
 - If camera works but car does not move: verify ESP32<->UNO UART wiring.
 - If obstacle mode seems inactive: ensure the mode is ON and bridge build includes mode-aware polling.

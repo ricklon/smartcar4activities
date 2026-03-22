@@ -18,10 +18,19 @@ Existing control paths still work:
 - IR remote support remains available.
 - The default Android app and other stock features can still be used.
 
+Fallback AP compatibility note:
+- When the ESP32 cannot join a saved local network, it falls back to the original ELEGOO-style AP workflow.
+- In that mode, the project keeps using the stock-style host and ports:
+  - car host: `192.168.4.1`
+  - control socket: `192.168.4.1:100`
+  - camera stream: `http://192.168.4.1:81/stream`
+- This is intentional so fallback mode stays compatible with the original ELEGOO firmware/network model.
+
 ## Start Here
 
 - For classroom bring-up: `docs/QUICKSTART.md`
 - For protocol/system behavior: `docs/SYSTEM_PROTOCOL.md`
+- For Wi-Fi, camera, and control recovery steps: `docs/ESP32_S3_TROUBLESHOOTING.md`
 - For project context: `docs/PROJECT_OVERVIEW.md`
 - For mixed-platform activities (stock app + this dashboard): `docs/STEM_ACTIVITY_CARDS_CROSS_PLATFORM.md`
 - For no-network IR-remote activities: `docs/STEM_ACTIVITY_CARDS_IR_REMOTE.md`
@@ -105,13 +114,17 @@ npm run dev -- --host
 
 Open the Vite URL (typically `http://localhost:5173`), then use:
 - Bridge Host:Port = `localhost:8787`
-- Car Host = `192.168.4.1`
+- Car Host =:
+  - `192.168.4.1` when the ESP32 is in fallback AP mode
+  - the ESP32 LAN IP when it successfully joined a local network
 - Car TCP Port = `100`
 
 ## Basic Car Connection (Fast Path)
 
 1. Power on the car.
-2. Join the car Wi-Fi network (`ELEGOO-...`) on your laptop/phone.
+2. Use one of these network paths:
+   - fallback AP mode: join the car Wi-Fi network (`ELEGOO-...`) and use `192.168.4.1`
+   - LAN mode: join the same local Wi-Fi as the car and use the ESP32 LAN IP
 3. Start the app from `wifi-control-ui` with `npm run car`.
 4. Open the UI URL shown in terminal (typically `http://localhost:5173`).
 5. In the UI, click `Connect Bridge + Car` and verify:

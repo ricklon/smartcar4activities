@@ -1,5 +1,198 @@
 # ESP32-S3 Troubleshooting Guide
 
+This guide covers the project-specific ESP32-S3 behavior used in this repository:
+
+- local network join with saved credentials
+- fallback to the original ELEGOO AP workflow
+- camera stream behavior on LAN vs AP
+- TCP control path through the local bridge
+
+## Network Modes
+
+The ESP32 now has two operating modes:
+
+- `LAN / STA mode`
+  - The ESP32 joins a saved local Wi-Fi network.
+  - Use the ESP32's LAN IP as `Car Host` in the UI.
+- `Fallback AP mode`
+  - If the saved Wi-Fi network cannot be joined, the ESP32 starts its own AP.
+  - This preserves the original ELEGOO workflow.
+  - Use `192.168.4.1` as `Car Host`.
+
+In both modes, the browser UI still talks to the local bridge first:
+
+- `Bridge Host:Port = localhost:8787`
+- `Car TCP Port = 100`
+
+## Fast Recovery Checklist
+
+If the car is not reachable:
+
+1. Confirm the local bridge is running.
+2. Confirm whether the ESP32 is in LAN mode or fallback AP mode.
+3. Use the correct `Car Host`:
+   - LAN mode: the ESP32's LAN IP
+   - fallback AP mode: `192.168.4.1`
+4. Check whether the camera works at `/stream`.
+5. Check whether port `100` is reachable for car control.
+
+## Problem: ESP32 Does Not Show `ELEGOO-...` AP
+
+This is not automatically a failure.
+
+Most likely causes:
+
+- the ESP32 successfully joined the saved Wi-Fi network
+- it is still trying to join and has not timed out yet
+- it is powered but not yet fully booted
+
+What to do:
+
+1. Wait 20 to 30 seconds after boot.
+2. Check whether it joined the LAN.
+3. Only expect the `ELEGOO-...` AP when saved Wi-Fi join fails.
+
+## Problem: Need To Find The ESP32 IP On The LAN
+
+The most reliable identifier is the ESP32 MAC address:
+
+- `30:ed:a0:1e:c4:38`
+
+Use the neighbor table first:
+
+```bash
+ip neigh show | grep -i '30:ed:a0:1e:c4:38'
+```
+
+If nothing appears, scan the current subnet first.
+
+Example for a `192.168.1.x` LAN:
+
+```bash
+nmap -sn 192.168.1.0/24 >/dev/null
+ip neigh show | grep -i '30:ed:a0:1e:c4:38'
+```
+
+Example for a `192.168.4.0/22` LAN:
+
+```bash
+nmap -sn 192.168.4.0/22 >/dev/null
+ip neigh show | grep -i '30:ed:a0:1e:c4:38'
+```
+
+If a line appears like:
+
+```text
+192.168.4.23 dev wlp0s20f3 lladdr 30:ed:a0:1e:c4:38 STALE
+```
+
+then the car IP is `192.168.4.23`.
+
+## Problem: ESP32 Fails To Join Wi-Fi And Falls Back To AP
+
+Expected behavior:
+
+- the fallback AP is the recovery path
+- join the `ELEGOO-...` SSID
+- use:
+  - `Car Host = 192.168.4.1`
+  - `Car TCP Port = 100`
+  - camera stream `http://192.168.4.1:81/stream`
+
+This fallback behavior is intentionally kept compatible with the original ELEGOO firmware/network model.
+
+## Problem: ESP32 Will Not Join A 5 GHz Network
+
+This is expected.
+
+ESP32-S3 boards used like this are effectively `2.4 GHz` Wi-Fi clients.
+
+Implications:
+
+- a `5 GHz-only` SSID will fail
+- a dual-band SSID can work if `2.4 GHz` is available
+- band steering can make onboarding unreliable
+
+Recommended practice:
+
+- provision the car on a `2.4 GHz` WPA2 personal network
+- if using Eero or similar mesh Wi-Fi, temporarily disable `5 GHz` while onboarding IoT devices
+
+## Problem: Camera Works But `Connect Bridge + Car` Stays Offline
+
+The usual cause is that the bridge is not running.
+
+Run:
+
+```bash
+cd wifi-control-ui
+npm run bridge
+```
+
+or start both services:
+
+```bash
+cd wifi-control-ui
+npm run car
+```
+
+Use these UI settings:
+
+- `Bridge Host:Port = localhost:8787`
+- `Car Host = <LAN IP or 192.168.4.1>`
+- `Car TCP Port = 100`
+
+Important:
+
+- `npm run dev` starts only the frontend
+- it does not start the bridge
+
+## Problem: Camera Stream Is Slow, Freezes, Or Starts Upside Down
+
+This repository already includes several ESP32-S3 camera fixes:
+
+- upside-down correction with `vflip=1`
+- `WiFi.setSleep(false)` to reduce LAN jitter
+- default stream size reduced to `VGA`
+
+If the stream still feels bad:
+
+- confirm you flashed the current project firmware, not older stock firmware
+- expect a short auto-exposure / white-balance settling period after boot
+- LAN conditions can still affect stream quality more than direct AP use
+
+## Problem: Camera Works But Car Controls Reset Or Disconnect
+
+This was previously caused by AP-only disconnect logic in the ESP32 socket server.
+
+The current project firmware removes that bug. If it reappears:
+
+1. Reflash the current ESP32 project firmware.
+2. Confirm the UI is using the current LAN IP or `192.168.4.1` in AP mode.
+3. Confirm the bridge is running locally.
+4. Check whether the car socket on port `100` is reachable.
+
+Example:
+
+```bash
+nmap -Pn -p 80,81,100 192.168.4.23
+```
+
+Expected:
+
+- `80/tcp open`
+- `81/tcp open`
+- `100/tcp open`
+
+## Problem: Unsure Which Address To Use
+
+Use this rule:
+
+- if the ESP32 joined your Wi-Fi, use its LAN IP
+- if it fell back to its own AP, use `192.168.4.1`
+
+Do not assume `192.168.4.1` is always correct anymore. It is only correct in fallback AP mode.
+
 ## Lessons Learned
 
 ### 1. CDCOnBoot Required for Serial Output

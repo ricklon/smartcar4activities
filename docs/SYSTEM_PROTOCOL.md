@@ -81,6 +81,36 @@ Provisioning flow:
 5. Device tries local Wi-Fi first
 6. If the join fails, it falls back to its own AP again
 
+Fallback AP operating details:
+
+- AP SSID format:
+  - `ELEGOO-<chip-id-suffix>`
+- AP management page:
+  - `http://192.168.4.1/wifi`
+- AP network status JSON:
+  - `http://192.168.4.1/wifi/status`
+- AP camera stream:
+  - `http://192.168.4.1:81/stream`
+- AP control socket:
+  - `192.168.4.1:100`
+
+Compatibility note:
+
+- These fallback AP values intentionally preserve the original ELEGOO firmware network model.
+- The project adds LAN/STA support, but when fallback AP mode is active it keeps the stock-style addressing and ports so direct-to-car workflows remain compatible.
+
+What the user should do in fallback AP mode:
+
+1. Join the `ELEGOO-...` Wi-Fi network from the laptop or phone
+2. Start the local bridge and UI as usual
+3. In the UI set:
+   - Bridge Host:Port = `localhost:8787`
+   - Car Host = `192.168.4.1`
+   - Car TCP Port = `100`
+4. Click `Connect Bridge + Car`
+
+This keeps the original direct-to-car workflow available even when LAN join fails.
+
 Runtime fallback:
 
 - if saved credentials exist
