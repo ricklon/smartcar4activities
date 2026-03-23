@@ -14,6 +14,37 @@ node -v
 npm -v
 ```
 
+## 0a. Pre-Provision Cars (Instructor Setup, One Time Per Car)
+
+If using the Tier 3 WS firmware, pre-provision each car before class with its
+Wi-Fi credentials, mDNS hostname, and car name. Connect the car via USB and run:
+
+```bash
+# ESP32-S3 kit
+arduino-code/bin/provision-car-s3.sh \
+  --ssid "ClassroomWifi" \
+  --password "wifipassword" \
+  --hostname "hiro1" \
+  --car-name "Hiro 1"
+
+# ESP32-WROVER kit
+arduino-code/bin/provision-car-wrover.sh \
+  --ssid "ClassroomWifi" \
+  --password "wifipassword" \
+  --hostname "hiro1" \
+  --car-name "Hiro 1"
+```
+
+This flashes the provisioner (writes credentials to NVS) then flashes the main
+firmware in one step. The car comes up connected with the right hostname already
+set. NVS data persists through future firmware reflashes.
+
+After provisioning, check `http://hiro1.local/wifi/status` or connect to the
+serial monitor to confirm.
+
+If you need to re-provision or clear credentials, see the serial recovery
+procedure in `docs/ESP32_S3_TROUBLESHOOTING.md`.
+
 ## 1. Power + Network
 
 Hardware note:

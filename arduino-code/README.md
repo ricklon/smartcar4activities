@@ -23,10 +23,18 @@ This folder contains the firmware sources currently used by this project, copied
   - Source copied from:
     - `02 Manual & Main Code & APP/02 Main Program   (Arduino UNO)/TB6612 & QMI8658C/SmartRobotCarV4.0_V2_20220322/`
 
-- `esp32-camera/ESP32_CameraServer_AP_simple/`
-  - ESP32 camera/AP/socket bridge firmware used with ESP32-S3 camera module.
-  - Source copied from:
-    - `02 Manual & Main Code & APP/04 Code of Carmer (ESP32)/ESP32-WROVER-Camera/ESP32_CameraServer_AP_simple/`
+- `esp32-camera/ESP32_CameraServer_AP_simple/` — **Tier 2 class firmware**
+  - Stable class firmware. Supports AP + LAN fallback, IMU telemetry.
+  - Targets both ESP32-S3 and ESP32-WROVER via `board_profile.h`.
+
+- `esp32-camera/ESP32_CameraServer_WS/` — **Tier 3 next firmware**
+  - Adds mDNS hostname provisioning and car identity. WebSocket support planned.
+  - Use `provision-car-s3.sh` or `provision-car-wrover.sh` to flash and provision in one step.
+  - Targets both ESP32-S3 and ESP32-WROVER via `board_profile.h`.
+
+- `esp32-provisioner/ESP32_Provisioner/`
+  - One-shot provisioner sketch. Writes Wi-Fi credentials, mDNS hostname, and car name to NVS.
+  - Do not flash directly — use the `provision-car-*.sh` scripts which generate the config and flash both this sketch and the main firmware automatically.
 
 - `esp32-diagnostics/ESP32_S3_SerialDiag/`
   - Minimal ESP32-S3 UART diagnostic sketch for testing UNO serial traffic without camera, Wi-Fi, or socket code.
@@ -49,12 +57,17 @@ This folder contains the firmware sources currently used by this project, copied
   - Flash the project ESP32-WROVER firmware.
 - `bin/flash-esp32-s3-serial-diag.sh`
   - Flash the minimal ESP32-S3 UART diagnostic sketch.
-
-- `esp32-camera-stock/wrover/ESP32_CameraServer_AP_simple/`
-  - Preserved stock ELEGOO WROVER simplified camera/socket baseline.
+- `bin/flash-esp32-s3-ws.sh`
+  - Flash the Tier 3 WS firmware to an ESP32-S3.
+- `bin/flash-esp32-wrover-ws.sh`
+  - Flash the Tier 3 WS firmware to an ESP32-WROVER.
+- `bin/provision-car-s3.sh`
+  - Provision and flash an ESP32-S3 in one step. Writes Wi-Fi, hostname, and car name to NVS, then flashes the Tier 3 WS firmware.
+- `bin/provision-car-wrover.sh`
+  - Same as above for ESP32-WROVER.
 
 - `esp32-camera-stock/wrover/ESP32_CameraServer_AP_20220120/`
-  - Preserved older stock ELEGOO WROVER camera baseline.
+  - Authoritative stock ELEGOO WROVER baseline (RX=GPIO33, TX=GPIO4).
 
 - `esp32-camera-stock/s3/ESP32_CameraServer_AP_2023_V1.3_vendor_s3/`
   - Authoritative vendor ESP32-S3 baseline from the 2024.01.30 ELEGOO package.

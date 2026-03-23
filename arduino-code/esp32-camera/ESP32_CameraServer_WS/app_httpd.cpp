@@ -85,13 +85,15 @@ static esp_err_t wifi_page_handler(httpd_req_t *req)
 {
   String saved_hostname = CameraWebServerWS.GetSavedStationHostname();
   String mdns_name = CameraWebServerWS.GetMdnsName();
+  String car_name = CameraWebServerWS.GetCarName();
   String html;
-  html.reserve(2800);
+  html.reserve(2900);
   html += "<!doctype html><html><head><meta charset='utf-8'><title>Wi-Fi Setup</title>";
   html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
   html += "<style>body{font-family:sans-serif;max-width:720px;margin:2rem auto;padding:0 1rem;}form{display:grid;gap:.75rem;margin:1rem 0;}input{padding:.65rem;font-size:1rem;}button{padding:.7rem 1rem;font-size:1rem;}code{background:#eee;padding:.1rem .3rem;} .card{border:1px solid #ddd;border-radius:10px;padding:1rem;margin:1rem 0;}</style></head><body>";
   html += "<h1>ESP32 Wi-Fi Setup</h1>";
-  html += "<div class='card'><p><strong>Mode:</strong> " + CameraWebServerWS.GetModeLabel() + "</p>";
+  html += "<div class='card'><p><strong>Car Name:</strong> " + (car_name.length() ? car_name : String("(not set)")) + "</p>";
+  html += "<p><strong>Mode:</strong> " + CameraWebServerWS.GetModeLabel() + "</p>";
   html += "<p><strong>AP SSID:</strong> " + CameraWebServerWS.GetActiveAccessPointSSID() + "</p>";
   html += "<p><strong>AP IP:</strong> " + CameraWebServerWS.GetAccessPointIP() + "</p>";
   html += "<p><strong>Saved STA SSID:</strong> " + CameraWebServerWS.GetSavedStationSSID() + "</p>";
@@ -122,6 +124,7 @@ static esp_err_t wifi_status_handler(httpd_req_t *req)
   json += "\"ap_ip\":\"" + CameraWebServerWS.GetAccessPointIP() + "\",";
   json += "\"saved_sta_ssid\":\"" + CameraWebServerWS.GetSavedStationSSID() + "\",";
   json += "\"saved_hostname\":\"" + CameraWebServerWS.GetSavedStationHostname() + "\",";
+  json += "\"car_name\":\"" + CameraWebServerWS.GetCarName() + "\",";
   json += "\"sta_connected\":";
   json += CameraWebServerWS.IsStationConnected() ? "true" : "false";
   json += ",\"sta_ip\":\"" + CameraWebServerWS.GetStationIP() + "\",";

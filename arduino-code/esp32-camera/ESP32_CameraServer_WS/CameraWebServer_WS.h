@@ -23,6 +23,7 @@ public:
   String GetMdnsName(void);
   String GetModeLabel(void);
   bool IsValidHostnameLabel(const String &hostname);
+  String GetCarName(void);
   String wifi_name;
 
 private:

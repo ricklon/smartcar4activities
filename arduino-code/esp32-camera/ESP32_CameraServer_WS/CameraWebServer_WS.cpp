@@ -17,6 +17,8 @@ const char *kWifiPrefsNamespace = "wifi";
 const char *kWifiSsidKey = "ssid";
 const char *kWifiPasswordKey = "password";
 const char *kWifiHostnameKey = "hostname";
+const char *kCarPrefsNamespace = "car";
+const char *kCarNameKey = "name";
 const uint32_t kInitialStaConnectTimeoutMs = 15000;
 const uint32_t kFallbackRetryWindowMs = 20000;
 }
@@ -256,6 +258,18 @@ String CameraWebServer_WS::GetModeLabel(void)
     return "AP";
   }
   return "OFF";
+}
+
+String CameraWebServer_WS::GetCarName(void)
+{
+  Preferences prefs;
+  if (!prefs.begin(kCarPrefsNamespace, true))
+  {
+    return "";
+  }
+  String name = prefs.getString(kCarNameKey, "");
+  prefs.end();
+  return name;
 }
 
 bool CameraWebServer_WS::IsValidHostnameLabel(const String &hostname)
