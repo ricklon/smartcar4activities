@@ -65,6 +65,8 @@ This folder contains the firmware sources currently used by this project, copied
   - Provision and flash an ESP32-S3 in one step. Writes Wi-Fi, hostname, and car name to NVS, then flashes the Tier 3 WS firmware.
 - `bin/provision-car-wrover.sh`
   - Same as above for ESP32-WROVER.
+- `bin/verify-car.sh`
+  - Automated pre-flight checks: ping, `/wifi/status` identity fields, camera HTTP, camera stream, TCP port 100. Run after provisioning or before class.
 
 - `esp32-camera-stock/wrover/ESP32_CameraServer_AP_20220120/`
   - Authoritative stock ELEGOO WROVER baseline (RX=GPIO33, TX=GPIO4).
