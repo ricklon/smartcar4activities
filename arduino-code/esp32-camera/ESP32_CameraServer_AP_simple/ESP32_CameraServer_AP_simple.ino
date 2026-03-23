@@ -116,6 +116,22 @@ void setup()
   Serial.printf("STA MAC: %s\r\n", WiFi.macAddress().c_str());
   Serial.printf("AP MAC: %s\r\n", WiFi.softAPmacAddress().c_str());
   Serial2.begin(9600, SERIAL_8N1, CAR_UART_RX_PIN, CAR_UART_TX_PIN);
+
+  if (CameraWebServerAP.HasSavedStationCredentials())
+  {
+    Serial.println("Saved Wi-Fi found. Send 'r' within 3s to clear and force AP mode...");
+    unsigned long deadline = millis() + 3000;
+    while (millis() < deadline)
+    {
+      if (Serial.available() && Serial.read() == 'r')
+      {
+        CameraWebServerAP.ClearStationCredentials();
+        Serial.println("Credentials cleared. Starting in AP mode.");
+        break;
+      }
+    }
+  }
+
   CameraWebServerAP.CameraWebServer_AP_Init();
   server.begin();
 }
