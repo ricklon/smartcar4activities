@@ -7,6 +7,11 @@
 #include <WiFi.h>
 #include "esp_camera.h"
 
+namespace
+{
+const char *kProjectFirmwareVersion = "smartcar4activities-esp32 2026-03-22";
+}
+
 WiFiServer server(100);
 CameraWebServer_AP CameraWebServerAP;
 
@@ -105,8 +110,11 @@ void SocketServer_Test(void)
 void setup()
 {
   Serial.begin(115200);
+  Serial.printf("Firmware version: %s\r\n", kProjectFirmwareVersion);
   Serial.printf("Board profile: %s\r\n", CAR_BOARD_PROFILE_LABEL);
   Serial.printf("Serial2 RX=%d TX=%d\r\n", CAR_UART_RX_PIN, CAR_UART_TX_PIN);
+  Serial.printf("STA MAC: %s\r\n", WiFi.macAddress().c_str());
+  Serial.printf("AP MAC: %s\r\n", WiFi.softAPmacAddress().c_str());
   Serial2.begin(9600, SERIAL_8N1, CAR_UART_RX_PIN, CAR_UART_TX_PIN);
   CameraWebServerAP.CameraWebServer_AP_Init();
   server.begin();
